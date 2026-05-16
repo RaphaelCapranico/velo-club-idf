@@ -1070,3 +1070,61 @@ def main():
 
 if __name__ == "__main__":
     main()
+# ============================================================================
+# MAIN
+# ============================================================================
+
+def main():
+    init_session_state()
+
+    G = cached_graph()
+    club_traces = cached_traces()
+
+    config = render_sidebar()
+
+    col_map, col_info = st.columns([3, 1])
+
+    with col_map:
+        st.subheader("Carte")
+
+        n_wp = len(st.session_state.waypoints)
+        if n_wp == 0:
+            st.info("👇 Clique sur la carte pour placer ton **départ**")
+        elif n_wp == 1:
+            st.info("👇 Clique pour placer ton **arrivée** ou un waypoint")
+        else:
+            st.info(f"✅ {n_wp} points · ajoute d'autres waypoints ou clique **Calculer**")
+
+        m = build_map(config, club_traces)
+        map_data = st_folium(m, height=600, width=None, returned_objects=["last_clicked"])
+
+        if map_data and map_data.get("last_clicked"):
+            clicked = map_data["last_clicked"]
+            new_wp = (clicked["lat"], clicked["lng"])
+            if not st.session_state.waypoints or st.session_state.waypoints[-1] != new_wp:
+                st.session_state.waypoints.append(new_wp)
+                st.rerun()
+
+    with col_info:
+        render_waypoints_panel()
+        st.divider()
+        trigger_routing(G, config, club_traces)
+        st.divider()
+        render_route_stats(config)
+        st.divider()
+        render_similarity()
+        st.divider()
+        render_gpx_upload(club_traces)
+
+    # Section bosses en pleine largeur sous la carte
+    render_bumps_section()
+
+    # Footer
+    st.divider()
+    with st.expander("ℹ️ Aide"):
+        st.markdown("""
+        """)
+
+
+if __name__ == "__main__":
+    main()
