@@ -26,13 +26,13 @@ from backend import (
 # ============================================================================
 
 st.set_page_config(
-    page_title="Vélo Club IdF",
+    page_title="Vélo Plaisir IdF",
     page_icon="🚴",
     layout="wide",
 )
 
 st.title("🚴 Planificateur d'itinéraires vélo — Île-de-France")
-st.caption("Routes plaisir basées sur l'expérience du club")
+st.caption("Routes plaisir")
 
 # ============================================================================
 # SESSION STATE
@@ -607,7 +607,7 @@ def render_sidebar():
         profile = st.selectbox(
             "Profil",
             options=["club_road", "solo_casual"],
-            format_func=lambda x: "🚴 Club road (25mm)" if x == "club_road" else "🚲 Solo casual",
+            format_func=lambda x: "🚴 Club road" if x == "club_road" else "🚲 Solo casual",
         )
 
         alpha = st.slider(
@@ -1039,33 +1039,33 @@ def main():
     # Footer
     st.divider()
     with st.expander("ℹ️ Aide"):
-        st.markdown("""
-        ### Utilisation
-        1. **Place ton départ** en cliquant sur la carte ou via recherche d'adresse
-        2. **Place ton arrivée** + waypoints intermédiaires pour créer une boucle
-        3. **Ajuste profil + plaisir** dans la sidebar
-        4. Clique **Calculer l'itinéraire**
-        5. **Télécharge le GPX** pour ton Garmin/Wahoo
-        6. **Analyse des bosses** : tableau sous la carte + export Excel stylé
+        # st.markdown("""
+        # ### Utilisation
+        # 1. **Place ton départ** en cliquant sur la carte ou via recherche d'adresse
+        # 2. **Place ton arrivée** + waypoints intermédiaires pour créer une boucle
+        # 3. **Ajuste profil + plaisir** dans la sidebar
+        # 4. Clique **Calculer l'itinéraire**
+        # 5. **Télécharge le GPX** pour ton Garmin/Wahoo
+        # 6. **Analyse des bosses** : tableau sous la carte + export Excel stylé
 
-        ### Curseur α
-        - **0** : plus court chemin pur
-        - **1** : équilibre distance/plaisir
-        - **1.5-2** : détours pour passer par les belles routes club
+        # ### Curseur α
+        # - **0** : plus court chemin pur
+        # - **1** : équilibre distance/plaisir
+        # - **1.5-2** : détours pour passer par les belles routes club
 
-        ### Mode grimpeur
-        Teste plusieurs α et choisit celui dont le D+ est le plus proche de la cible
+        # ### Mode grimpeur
+        # Teste plusieurs α et choisit celui dont le D+ est le plus proche de la cible
 
-        ### Similarité club (F1 géo, seuil 50m)
-        - **Coverage** : % de l'itinéraire à <50m d'au moins une trace club
-        - **F1** : similarité avec les 5 traces club les plus proches
+        # ### Similarité club (F1 géo, seuil 50m)
+        # - **Coverage** : % de l'itinéraire à <50m d'au moins une trace club
+        # - **F1** : similarité avec les 5 traces club les plus proches
 
-        ### Détection bosses
-        Seuils : longueur ≥ 250m ET pente moyenne ≥ 3%.
-        Simulation temps à 250/300/350W avec physique (Newton).
-        Sur GPX uploadé : utilise les vraies altitudes.
-        Sur itinéraire calculé : profil D+ relatif (altitudes absolues approximatives).
-        """)
+        # ### Détection bosses
+        # Seuils : longueur ≥ 250m ET pente moyenne ≥ 3%.
+        # Simulation temps à 250/300/350W avec physique (Newton).
+        # Sur GPX uploadé : utilise les vraies altitudes.
+        # Sur itinéraire calculé : profil D+ relatif (altitudes absolues approximatives).
+        # """)
 
 
 if __name__ == "__main__":
