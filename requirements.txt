@@ -1,0 +1,12 @@
+﻿streamlit>=1.30
+streamlit-folium
+folium
+networkx
+numpy<2
+pandas
+scikit-learn
+shapely
+sqlalchemy
+psycopg2-binary
+openpyxl
+requests
