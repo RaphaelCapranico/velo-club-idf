@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<gpx version="1.1" creator="VeloClubIDF" xmlns="http://www.topografix.com/GPX/1/1" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.topografix.com/GPX/1/1 http://www.topografix.com/GPX/1/1/gpx.xsd">
+  <metadata>
+    <name>Test</name>
+    <desc> - 2.1 km</desc>
+    <time>2026-05-15T17:54:21Z</time>
+  </metadata>
+  <trk>
+    <name>Test</name>
+    <trkseg>
+      <trkpt lat="48.8566000" lon="2.3522000">
+        <ele>0.0</ele>
+      </trkpt>
+      <trkpt lat="48.8500000" lon="2.3500000">
+        <ele>0.0</ele>
+      </trkpt>
+      <trkpt lat="48.8400000" lon="2.3600000">
+        <ele>0.0</ele>
+      </trkpt>
+    </trkseg>
+  </trk>
+</gpx>

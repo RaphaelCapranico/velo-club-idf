@@ -240,32 +240,13 @@ def _find_pointu_section(smooth, dists, start_idx, peak_idx, bump_grade,
     return "Non"
 
 
-def detect_bumps(coords, elevations,
-                 mass_kg=77, CdA=0.30, Crr=0.004):
-    """Détecte les bosses avec algo sliding-window grade detection.
-
-    Algorithme :
-    1. Resample à 25m
-    2. Smooth très léger (50m) juste contre bruit GPX
-    3. Calcule pente locale glissante sur 100m en chaque point
-    4. Trouve les segments où pente >= seuil au démarrage, étend tant que pente >= seuil loose (1.5%)
-    5. S'arrête au premier sommet local (drop > 2m)
-    6. Filtre par longueur >= 250m ET pente moyenne >= 3%
-    """
-    if len(coords) < 4 or len(elevations) != len(coords):
-        return []
-
-    dists, elevs = _resample_elevation(coords, elevations, step_m=25)
-    if len(dists) < 10:
-        return []
-
-    # Smoothing très léger (juste contre bruit GPX), pas l'écrasement à 200m
-    smooth = _smooth(elevs, 2)
+def _detect_bumps_one_pass(dists, smooth, mass_kg, CdA, Crr,
+                            neg_grade_break=-2.0, drop_ratio=0.10):
+    """Une passe de détection avec un smoothing donné."""
     n = len(smooth)
     step = 25
-
-    # Pente locale glissante sur 100m
     window_samples = max(2, int(100 / step))
+
     local_grade = []
     for i in range(n):
         j_lo = max(0, i - window_samples//2)
@@ -276,10 +257,9 @@ def detect_bumps(coords, elevations,
             g = (smooth[j_hi] - smooth[j_lo]) / (dists[j_hi] - dists[j_lo]) * 100
             local_grade.append(g)
 
-    bumps = []
+    bumps_raw = []
     i = 0
     while i < n - 1:
-        # Cherche début de bosse : pente locale >= min_grade_pct
         while i < n - 1 and local_grade[i] < 3.0:
             i += 1
         if i >= n - 1:
@@ -289,7 +269,6 @@ def detect_bumps(coords, elevations,
         peak_i = i
         peak_val = smooth[i]
         j = i + 1
-        max_drop_tolerance = 2.0  # m de descente avant d'arrêter la bosse
 
         while j < n:
             if smooth[j] >= peak_val:
@@ -298,8 +277,11 @@ def detect_bumps(coords, elevations,
                 j += 1
             else:
                 drop = peak_val - smooth[j]
-                # Arrêt : descente significative OU pente locale très négative
-                if drop > max_drop_tolerance or local_grade[j] < -1.0:
+                current_gain = peak_val - smooth[start_i]
+                max_drop_tolerance = max(3.0, min(25.0, current_gain * drop_ratio))
+                if drop > max_drop_tolerance:
+                    break
+                if local_grade[j] < neg_grade_break and j - start_i > 8:
                     break
                 j += 1
 
@@ -308,92 +290,164 @@ def detect_bumps(coords, elevations,
 
         if length >= 250 and gain > 0:
             grade = gain / length * 100
-
-            # Double seuil Wahoo Summit Freeride :
-            # - ≥ 400m à ≥ 3% (bosses longues classiques)
-            # - OU ≥ 250m à ≥ 7% (bosses courtes punchy)
-            # - Interpolation linéaire entre les deux pour les longueurs intermédiaires
             if length >= 400:
-                min_grade_required = 3.0
+                req = 3.0
             else:
-                # Interpolation : à 250m → 7%, à 400m → 3%
-                min_grade_required = 7.0 - 4.0 * (length - 250) / 150
-
-            if grade >= min_grade_required:
-                # Pente max sur 100m
-                max_g = 0
-                for k in range(start_i, peak_i - window_samples + 1):
-                    seg_g = (smooth[k + window_samples] - smooth[k]) / 100 * 100
-                    if seg_g > max_g:
-                        max_g = seg_g
-
-                # Section pointue (nouvelle fonction avec critères stricts)
-                section_pointue = _find_pointu_section(smooth, dists, start_i, peak_i, grade)
-
-                # Analyse 2,5km après sommet
-                idx_after = min(peak_i + int(2500 / 25), n - 1)
-                if idx_after > peak_i:
-                    diff = smooth[idx_after] - smooth[peak_i]
-                    delta_d = dists[idx_after] - dists[peak_i]
-                    g_after = diff / delta_d * 100 if delta_d > 0 else 0
-                    if g_after < -1.0:
-                        after = f"Descente, {diff:+.0f}m sur 2,5km"
-                    elif g_after > 1.0:
-                        after = "Montée continue"
-                    else:
-                        after = "Plat"
-                else:
-                    after = "Fin du parcours"
-
-                # Simulations physiques
-                v250 = _solve_climb_speed(250, grade, mass_kg, CdA, Crr)
-                v300 = _solve_climb_speed(300, grade, mass_kg, CdA, Crr)
-                v350 = _solve_climb_speed(350, grade, mass_kg, CdA, Crr)
-
-
-
-                # FIETS Index (référence académique cyclisme)
-                # base = H² / (D × 10), bonus altitude si sommet > 1000m
-                fiets = gain**2 / (length * 10)
-                if smooth[peak_i] > 1000:
-                    fiets += (smooth[peak_i] - 1000) / 1000
-
-                # Catégorie FIETS
-                if fiets >= 6.5:
-                    fiets_cat = "HC"
-                elif fiets >= 5.0:
-                    fiets_cat = "Cat 1"
-                elif fiets >= 3.5:
-                    fiets_cat = "Cat 2"
-                elif fiets >= 2.0:
-                    fiets_cat = "Cat 3"
-                elif fiets >= 0.5:
-                    fiets_cat = "Cat 4"
-                elif fiets >= 0.25:
-                    fiets_cat = "Cat 5"
-                else:
-                    fiets_cat = "—"
-
-                bumps.append({
-                    "num": len(bumps) + 1,
-                    "km_start": dists[start_i] / 1000,
-                    "length_m": int(length),
-                    "grade_avg": round(grade, 1),
-                    "grade_max_100m": round(max_g, 1),
-                    "section_pointue": section_pointue,
-                    "after_summit": after,
-                    "time_250w": _format_time(length / v250),
-                    "time_300w": _format_time(length / v300),
-                    "time_350w": _format_time(length / v350),
-                    "d_plus_m": int(gain),
-                    "alt_summit_m": int(smooth[peak_i]),
-                    "fiets": round(fiets, 2),
-                    "fiets_cat": fiets_cat,
+                req = 7.0 - 4.0 * (length - 250) / 150
+            if grade >= req:
+                bumps_raw.append({
+                    'start_i': start_i,
+                    'peak_i': peak_i,
+                    'km_start': dists[start_i] / 1000,
+                    'km_end': dists[peak_i] / 1000,
+                    'length_m': int(length),
+                    'grade': round(grade, 1),
+                    'gain': int(gain),
                 })
-
         i = peak_i + 1
 
-    return bumps
+    return bumps_raw, local_grade, window_samples
+
+
+def detect_bumps(coords, elevations,
+                 mass_kg=77, CdA=0.30, Crr=0.004):
+    """Détection des bosses en 2 passes :
+    - Passe 1 (smooth=2) : capture les petites bosses (~300m)
+    - Passe 2 (smooth=6) : capture les longs cols qui pourraient être fragmentés
+    - Fusion : si un long col contient plusieurs petites bosses, on garde le col
+    """
+    if len(coords) < 4 or len(elevations) != len(coords):
+        return []
+
+    dists, elevs = _resample_elevation(coords, elevations, step_m=25)
+    if len(dists) < 10:
+        return []
+
+    # Passe 1 : smooth léger pour petites bosses
+    smooth_fine = _smooth(elevs, 2)
+    bumps_fine, _, _ = _detect_bumps_one_pass(
+        dists, smooth_fine, mass_kg, CdA, Crr,
+        neg_grade_break=-2.0, drop_ratio=0.10
+    )
+
+    # Passe 2 : smooth fort pour grands cols
+    smooth_coarse = _smooth(elevs, 6)
+    bumps_coarse, _, _ = _detect_bumps_one_pass(
+        dists, smooth_coarse, mass_kg, CdA, Crr,
+        neg_grade_break=-5.0, drop_ratio=0.10
+    )
+    # Smooth très fort pour calcul des sections pointues sur longs cols
+    # (élimine le bruit baromètre)
+    smooth_sections = _smooth(elevs, 12)
+
+    # Fusion : pour chaque bosse de la passe 2 (longue), on supprime
+    # toutes les bosses de la passe 1 qui sont dedans, et on garde la longue
+    final_bumps = []
+
+    # On ne garde une bosse coarse que si elle est SIGNIFICATIVEMENT plus longue
+    # qu'une bosse fine au même endroit (sinon doublon)
+    for c in bumps_coarse:
+        # Cherche les bosses fines qui sont dans cette plage
+        fines_in_range = [f for f in bumps_fine
+                          if f['km_start'] >= c['km_start'] - 0.3
+                          and f['km_end'] <= c['km_end'] + 0.3]
+
+        if len(fines_in_range) >= 2:
+            # Plusieurs petites bosses dans une grande → on garde la grande
+            final_bumps.append({'is_coarse': True, **c})
+            # Marque les fines pour suppression
+            for f in fines_in_range:
+                f['_skip'] = True
+
+    # Ajoute toutes les bosses fines non skippées
+    for f in bumps_fine:
+        if not f.get('_skip'):
+            final_bumps.append({'is_coarse': False, **f})
+
+    # Trie par km_start
+    final_bumps.sort(key=lambda b: b['km_start'])
+
+    # Construit le résultat final avec tous les champs
+    # On utilise smooth_fine pour calculer les détails (sections pointues etc.)
+    # car c'est plus précis
+    step = 25
+    window_samples = max(2, int(100 / step))
+    n = len(smooth_fine)
+
+    result = []
+    for b in final_bumps:
+        # Recalcule les indices selon le smooth utilisé
+        # (les bosses coarse pointent vers smooth_coarse, fines vers smooth_fine)
+        smooth_used = smooth_coarse if b['is_coarse'] else smooth_fine
+        start_i = b['start_i']
+        peak_i = b['peak_i']
+        length = dists[peak_i] - dists[start_i]
+        gain = smooth_used[peak_i] - smooth_used[start_i]
+        grade = gain / length * 100 if length > 0 else 0
+
+        # Pente max : sur smooth_sections pour les cols, smooth_fine pour petites bosses
+        smooth_for_max = smooth_sections if b['is_coarse'] else smooth_fine
+        max_g = 0
+        for k in range(start_i, peak_i - window_samples + 1):
+            seg_g = (smooth_for_max[k + window_samples] - smooth_for_max[k]) / 100 * 100
+            if seg_g > max_g:
+                max_g = seg_g
+
+        # Section pointue : sur smooth_sections pour les cols (sans bruit baromètre)
+        # sur smooth_fine pour les petites bosses (garde la précision)
+        smooth_for_pointu = smooth_sections if b['is_coarse'] else smooth_fine
+        section_pointue = _find_pointu_section(smooth_for_pointu, dists, start_i, peak_i, grade)
+
+        # Analyse 2,5km après sommet sur le bon smooth
+        idx_after = min(peak_i + int(2500 / 25), n - 1)
+        if idx_after > peak_i:
+            diff = smooth_used[idx_after] - smooth_used[peak_i]
+            delta_d = dists[idx_after] - dists[peak_i]
+            g_after = diff / delta_d * 100 if delta_d > 0 else 0
+            # Seuils plus sensibles : ±0.5% suffit pour parler de descente/montée
+            if g_after < -0.5:
+                after = f"Descente, {diff:+.0f}m sur 2,5km"
+            elif g_after > 0.5:
+                after = "Montée continue"
+            else:
+                after = "Plat"
+        else:
+            after = "Fin du parcours"
+
+        v250 = _solve_climb_speed(250, grade, mass_kg, CdA, Crr)
+        v300 = _solve_climb_speed(300, grade, mass_kg, CdA, Crr)
+        v350 = _solve_climb_speed(350, grade, mass_kg, CdA, Crr)
+
+        fiets = gain**2 / (length * 10)
+        if smooth_used[peak_i] > 1000:
+            fiets += (smooth_used[peak_i] - 1000) / 1000
+
+        if fiets >= 6.5: fiets_cat = "HC"
+        elif fiets >= 5.0: fiets_cat = "Cat 1"
+        elif fiets >= 3.5: fiets_cat = "Cat 2"
+        elif fiets >= 2.0: fiets_cat = "Cat 3"
+        elif fiets >= 0.5: fiets_cat = "Cat 4"
+        elif fiets >= 0.25: fiets_cat = "Cat 5"
+        else: fiets_cat = "—"
+
+        result.append({
+            "num": len(result) + 1,
+            "km_start": dists[start_i] / 1000,
+            "length_m": int(length),
+            "grade_avg": round(grade, 1),
+            "grade_max_100m": round(max_g, 1),
+            "section_pointue": section_pointue,
+            "after_summit": after,
+            "time_250w": _format_time(length / v250),
+            "time_300w": _format_time(length / v300),
+            "time_350w": _format_time(length / v350),
+            "d_plus_m": int(gain),
+            "alt_summit_m": int(smooth_used[peak_i]),
+            "fiets": round(fiets, 2),
+            "fiets_cat": fiets_cat,
+        })
+
+    return result
 
 
 # ============================================================================

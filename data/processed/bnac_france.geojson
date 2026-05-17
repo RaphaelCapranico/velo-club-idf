@@ -1,0 +1,690 @@
+<!DOCTYPE html>
+<html lang="fr">
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="author" content="Ministère des Transports">
+    <meta name="csrf" content="ECAxdAcRK2cFMAc_Mj12UjcoLC4hUjUOSKcC_raPfJFyjYGapOYLmcmw">
+
+
+
+    <meta name="description" content="Rendre disponible, valoriser et améliorer les données transports">
+    <title>Jeu de données ouvert geojson - Zone à faible émissions de la Métropole de Lyon - ZFE (respect strict du schéma ZFE national) pour Zone à Faibles Émissions - Métropole de Lyon - Aire réglementée - Métropole de Lyon</title>
+
+    <meta property="og:title" content="Jeu de données ouvert geojson - Zone à faible émissions de la Métropole de Lyon - ZFE (respect strict du schéma ZFE national) pour Zone à Faibles Émissions - Métropole de Lyon - Aire réglementée - Métropole de Lyon">
+    <meta property="og:image" content="https://transport.data.gouv.fr/images/transport-social-share-65fc4c760aa8fe71c7ae5e5bcd370981.png?vsn=d">
+    <meta property="og:type" content="website">
+    <meta property="og:description" content="Rendre disponible, valoriser et améliorer les données transports">
+    <meta property="og:locale" content="fr">
+
+    <meta name="twitter:card" content="summary">
+    <meta property="twitter:title" content="Jeu de données ouvert geojson - Zone à faible émissions de la Métropole de Lyon - ZFE (respect strict du schéma ZFE national) pour Zone à Faibles Émissions - Métropole de Lyon - Aire réglementée - Métropole de Lyon">
+    <meta property="twitter:image" content="https://transport.data.gouv.fr/images/transport-social-share-65fc4c760aa8fe71c7ae5e5bcd370981.png?vsn=d">
+    <meta property="twitter:description" content="Rendre disponible, valoriser et améliorer les données transports">
+
+    <link rel="stylesheet" media="all" href="/css/app-9106e50de32f32718e2b024c757b9704.css?vsn=d">
+    <link rel="alternate" type="application/atom+xml" href="https://transport.data.gouv.fr/atom.xml" title="Resources feed">
+    <link type="text/plain" rel="author" href="https://transport.data.gouv.fr/humans.txt">
+
+      <!-- Polyfill for css grid-->
+      <script type="text/javascript">
+        if(/MSIE \d|Trident.*rv:/.test(navigator.userAgent)) {
+          document.write('<script src="https://unpkg.com/@babel/polyfill@7.0.0/dist/polyfill.js"><\/script>');
+          document.write('<script src="https://unpkg.com/url-polyfill@1.0.14/url-polyfill.js"><\/script>');
+        }
+      </script>
+      <!-- Matomo -->
+      <script type="text/javascript">
+        var _paq = _paq || [];
+        _paq.push(["setCookieDomain", "*.transport.data.gouv.fr"]);
+        _paq.push(["setDomains", "*.transport.data.gouv.fr"]);
+        _paq.push(["HeatmapSessionRecording::disable"]);
+        _paq.push(["trackPageView"]);
+        _paq.push(["enableLinkTracking"]);
+        window._paq = _paq;
+        (function() {
+          var u="//stats.data.gouv.fr/";
+          _paq.push(["setTrackerUrl", u+"matomo.php"]);
+          _paq.push(["setSiteId", "58"]);
+          var d=document, g=d.createElement('script'), s=d.getElementsByTagName("script")[0];
+          g.type="text/javascript"; g.async=true; g.defer=true; g.src=u+"matomo.js"; s.parentNode.insertBefore(g,s);
+        })();
+      </script>
+      <!-- End Matomo Code -->
+
+
+  </head>
+
+  <body>
+    <header class="navbar">
+  <div class="navbar__container">
+    <a href="/" class="navbar__home">
+      <img alt="transport.data.gouv.fr" class="navbar__logo-mariane" src="/images/logo-ministere-transports-2026-03.png">
+      <img alt="transport.data.gouv.fr" class="navbar__logo-black" src="/images/logo-black.svg">
+    </a>
+    <nav>
+      <a href="#menu" class="nav__hamburger" aria-label="Fermer le menu">
+        <i class="fa fa-bars"></i>
+      </a>
+      <div id="menu">
+        <a id="close-menu" href="#" aria-label="Fermer le menu">
+          <i class="fas icon--times-circle"></i>&nbsp
+        </a>
+        <ul class="nav__links top-nav-links">
+          <li class="nav__item">
+            <button type="button" class="dropdown">
+              Données
+              <div class="dropdown-content">
+                <a href="/datasets">Toutes les données</a>
+                <a href="/explore">Carte d&#39;exploration des données</a>
+                <a href="/explore/gtfs-stops">Carte nationale des arrêts GTFS</a>
+                <a href="/reuses">Réutilisations</a>
+              </div>
+            </button>
+          </li>
+          <li class="nav__item">
+            <a href="https://doc.transport.data.gouv.fr">Documentation</a>
+          </li>
+          <li class="nav__item">
+            <button type="button" class="dropdown">
+              Outils
+              <div class="dropdown-content">
+                <a href="/validation">Vérifier la qualité d&#39;un fichier ou d&#39;un flux</a>
+                <a href="/tools/gtfs_diff">Comparer deux GTFS</a>
+                <a href="/tools/siri-querier">Générateur de requêtes SIRI</a>
+
+                <a href="https://mtes-mct.github.io/alm-docs/" target="_blank">Accèslibre Mobilités</a>
+                <a href="https://status.transport.data.gouv.fr" target="_blank">État des services</a>
+              </div>
+            </button>
+          </li>
+          <li class="nav__item">
+            <a href="/stats">Statistiques</a>
+          </li>
+          <li class="nav__item">
+            <button type="button" class="dropdown">
+              Réglementation
+              <div class="dropdown-content">
+                <a href="https://normes.transport.data.gouv.fr" target="_blank">Normes</a>
+                <a href="https://doc.transport.data.gouv.fr/presentation-et-mode-demploi-du-pan/declaration-de-conformite" target="_blank">Déclaration de conformité</a>
+              </div>
+            </button>
+          </li>
+          <li class="nav__item">
+            <button type="button" class="dropdown">
+              À propos
+              <div class="dropdown-content">
+                <a href="/missions">Nos missions</a>
+                <a href="/nouveautes">Nouvelles fonctionnalités</a>
+              </div>
+            </button>
+          </li>
+          <li class="nav__item">
+            <a href="https://blog.transport.data.gouv.fr">Blog</a>
+          </li>
+
+            <li class="nav__item">
+              <a class="navigation__link navigation__link--login" href="/login/explanation?redirect_path=%2Fresources%2F79368">
+                <i class="icon icon--login" aria-hidden="true"></i>
+                <span>Se connecter</span>
+              </a>
+            </li>
+
+          <li class="nav__item">
+            <button type="button" class="dropdown">
+
+                <img src="/images/icons/fr-7be6995ec50bd9a89ae2d963e23cd4ea.png?vsn=d" alt="Français" height="18px">
+
+              <div class="dropdown-content languages">
+                <a href="/resources/79368?locale=fr">Français</a>
+                <a href="/resources/79368?locale=en">English</a>
+              </div>
+            </button>
+          </li>
+        </ul>
+      </div>
+    </nav>
+  </div>
+</header>
+
+    <main class="layout-main">
+
+      <div class="container dataset-page-top pb-24">
+  <div class="form__group">
+<form action="/datasets" class="shortlist-form" method="get">
+      <div class="searchBar">
+        <div class="form__group"><div class=""><i class="fas icon--magnifier" id="magnifier"></i><input aria-label="Trouvez un jeu de données" autocomplete="off" id="autoComplete" name="q" placeholder="Trouvez un jeu de données" type="search" value=""></div></div>
+        <div class="autoCompleteResultsField">
+          <div id="autoCompleteResults"></div>
+        </div>
+      </div>
+</form>
+  </div>
+</div>
+<script nonce="fXCvnHsNkP_lTA">
+  const contactId = null;
+  const labels = {"commune":"commune","dataset":"jeu de données","departement":"département","epci":"EPCI","feature":"données contenant…","format":"format de données","mode":"mode de transport","offer":"offre de transport","region":"région","results-description":"Ou rechercher par :","search-description":"Rechercher $query dans les descriptions des jeux de données"};
+</script>
+<style nonce="fXCvnHsNkP_lTA">
+  #autoComplete_list li:nth-of-type(2)::before {
+    content: 'Ou rechercher par :';
+  }
+</style>
+<script src="/js/autocomplete-6bebe119746951cc9f4eb39256472c59.js?vsn=d">
+</script>
+<div class="dataset-page">
+  <div class="dataset-menu-container">
+    <nav class="dataset-menu">
+      <div class="menu-item"><a href="#details">Détails de la ressource</a></div>
+      <div class="menu-item">
+        <a href="#download-availability">Disponibilité au téléchargement</a>
+      </div>
+      <div class="menu-item">
+        <a href="#validation-report">Rapport de validation</a>
+      </div>
+      <div class="menu-item">
+        <a href="#visualization">Visualisation</a>
+      </div>
+      
+    </nav>
+  </div>
+  <div class="dataset-infos">
+    <h2 id="details">Détails de la ressource</h2>
+    <div class="panel">
+      <div>
+  Nom du fichier : 
+  <strong>Zone à faible émissions de la Métropole de Lyon - ZFE (respect strict du schéma ZFE national)</strong>
+</div>
+<div>
+  Format : <span class="label">geojson</span>
+</div>
+<div>
+  Taille : 29.2 KB
+</div>
+<div class="form__group pt-12">
+  <a class="button-outline small secondary" href="https://download.data.grandlyon.com/files/grandlyon/environnement/zfe/zfe_zone_metropole_de_lyon.geojson">
+    <i class="icon icon--download" aria-hidden="true"></i>Télécharger
+  </a>
+  <a class="button-outline small secondary ml-05-em" href="https://explore.data.gouv.fr/fr/datasets/66f531f1e0dc1ba15fef29c9/#/resources/daaed707-5925-42b4-b9d5-eaa0e8ebdabb" target="_blank">
+    <i class="icon fa fa-external-link-alt" aria-hidden="true"></i>Ouvrir dans explore.data.gouv.fr
+  </a>
+</div>
+<div class="panel mt-24" lang="fr">
+  <p>
+Zone à faible émissions de la Métropole de Lyon - ZFE (respect strict du schéma ZFE national)</p>
+
+</div>
+<p>
+  Cette ressource fait partie du jeu de données <a href="/datasets/zone-a-faibles-emissions-de-la-metropole-de-lyon-zfe">Zone à Faibles Émissions - Métropole de Lyon - Aire réglementée</a>.
+</p>
+
+    </div>
+
+    <h2 id="download-availability">Disponibilité au téléchargement</h2>
+    
+<div class="panel">
+  <div class="download_availability">
+    <div class="flex_container">
+
+
+        <div class="day tooltip  download_availability_100">
+          <span class="tooltiptext">
+            <div>21/03/2026</div>
+            <div class="download_availability_100_text">
+              <strong>100%</strong>
+            </div>
+          </span>
+        </div>
+
+
+        <div class="day tooltip  download_availability_100">
+          <span class="tooltiptext">
+            <div>22/03/2026</div>
+            <div class="download_availability_100_text">
+              <strong>100%</strong>
+            </div>
+          </span>
+        </div>
+
+
+        <div class="day tooltip  download_availability_100">
+          <span class="tooltiptext">
+            <div>23/03/2026</div>
+            <div class="download_availability_100_text">
+              <strong>100%</strong>
+            </div>
+          </span>
+        </div>
+
+
+        <div class="day tooltip  download_availability_100">
+          <span class="tooltiptext">
+            <div>24/03/2026</div>
+            <div class="download_availability_100_text">
+              <strong>100%</strong>
+            </div>
+          </span>
+        </div>
+
+
+        <div class="day tooltip  download_availability_100">
+          <span class="tooltiptext">
+            <div>25/03/2026</div>
+            <div class="download_availability_100_text">
+              <strong>100%</strong>
+            </div>
+          </span>
+        </div>
+
+
+        <div class="day tooltip  download_availability_100">
+          <span class="tooltiptext">
+            <div>26/03/2026</div>
+            <div class="download_availability_100_text">
+              <strong>100%</strong>
+            </div>
+          </span>
+        </div>
+
+
+        <div class="day tooltip  download_availability_100">
+          <span class="tooltiptext">
+            <div>27/03/2026</div>
+            <div class="download_availability_100_text">
+              <strong>100%</strong>
+            </div>
+          </span>
+        </div>
+
+
+        <div class="day tooltip  download_availability_100">
+          <span class="tooltiptext">
+            <div>28/03/2026</div>
+            <div class="download_availability_100_text">
+              <strong>100%</strong>
+            </div>
+          </span>
+        </div>
+
+
+        <div class="day tooltip  download_availability_100">
+          <span class="tooltiptext">
+            <div>29/03/2026</div>
+            <div class="download_availability_100_text">
+              <strong>100%</strong>
+            </div>
+          </span>
+        </div>
+
+
+        <div class="day tooltip  download_availability_100">
+          <span class="tooltiptext">
+            <div>30/03/2026</div>
+            <div class="download_availability_100_text">
+              <strong>100%</strong>
+            </div>
+          </span>
+        </div>
+
+
+        <div class="day tooltip  download_availability_100">
+          <span class="tooltiptext">
+            <div>31/03/2026</div>
+            <div class="download_availability_100_text">
+              <strong>100%</strong>
+            </div>
+          </span>
+        </div>
+
+
+        <div class="day tooltip  download_availability_50">
+          <span class="tooltiptext">
+            <div>01/04/2026</div>
+            <div class="download_availability_50_text">
+              <strong>90%</strong>
+            </div>
+          </span>
+        </div>
+
+
+        <div class="day tooltip  download_availability_99">
+          <span class="tooltiptext">
+            <div>02/04/2026</div>
+            <div class="download_availability_99_text">
+              <strong>99.3%</strong>
+            </div>
+          </span>
+        </div>
+
+
+        <div class="day tooltip  download_availability_100">
+          <span class="tooltiptext">
+            <div>03/04/2026</div>
+            <div class="download_availability_100_text">
+              <strong>100%</strong>
+            </div>
+          </span>
+        </div>
+
+
+        <div class="day tooltip  download_availability_100">
+          <span class="tooltiptext">
+            <div>04/04/2026</div>
+            <div class="download_availability_100_text">
+              <strong>100%</strong>
+            </div>
+          </span>
+        </div>
+
+
+        <div class="day tooltip  download_availability_100">
+          <span class="tooltiptext">
+            <div>05/04/2026</div>
+            <div class="download_availability_100_text">
+              <strong>100%</strong>
+            </div>
+          </span>
+        </div>
+
+
+        <div class="day tooltip  download_availability_100">
+          <span class="tooltiptext">
+            <div>06/04/2026</div>
+            <div class="download_availability_100_text">
+              <strong>100%</strong>
+            </div>
+          </span>
+        </div>
+
+
+        <div class="day tooltip  download_availability_100">
+          <span class="tooltiptext">
+            <div>07/04/2026</div>
+            <div class="download_availability_100_text">
+              <strong>100%</strong>
+            </div>
+          </span>
+        </div>
+
+
+        <div class="day tooltip  download_availability_100">
+          <span class="tooltiptext">
+            <div>08/04/2026</div>
+            <div class="download_availability_100_text">
+              <strong>100%</strong>
+            </div>
+          </span>
+        </div>
+
+
+        <div class="day tooltip  download_availability_100">
+          <span class="tooltiptext">
+            <div>09/04/2026</div>
+            <div class="download_availability_100_text">
+              <strong>100%</strong>
+            </div>
+          </span>
+        </div>
+
+
+        <div class="day tooltip  download_availability_100">
+          <span class="tooltiptext">
+            <div>10/04/2026</div>
+            <div class="download_availability_100_text">
+              <strong>100%</strong>
+            </div>
+          </span>
+        </div>
+
+
+        <div class="day tooltip  download_availability_100">
+          <span class="tooltiptext">
+            <div>11/04/2026</div>
+            <div class="download_availability_100_text">
+              <strong>100%</strong>
+            </div>
+          </span>
+        </div>
+
+
+        <div class="day tooltip  download_availability_100">
+          <span class="tooltiptext">
+            <div>12/04/2026</div>
+            <div class="download_availability_100_text">
+              <strong>100%</strong>
+            </div>
+          </span>
+        </div>
+
+
+        <div class="day tooltip  download_availability_100">
+          <span class="tooltiptext">
+            <div>13/04/2026</div>
+            <div class="download_availability_100_text">
+              <strong>100%</strong>
+            </div>
+          </span>
+        </div>
+
+
+        <div class="day tooltip  download_availability_100">
+          <span class="tooltiptext">
+            <div>14/04/2026</div>
+            <div class="download_availability_100_text">
+              <strong>100%</strong>
+            </div>
+          </span>
+        </div>
+
+
+        <div class="day tooltip  download_availability_100">
+          <span class="tooltiptext">
+            <div>15/04/2026</div>
+            <div class="download_availability_100_text">
+              <strong>100%</strong>
+            </div>
+          </span>
+        </div>
+
+
+        <div class="day tooltip  download_availability_100">
+          <span class="tooltiptext">
+            <div>16/04/2026</div>
+            <div class="download_availability_100_text">
+              <strong>100%</strong>
+            </div>
+          </span>
+        </div>
+
+
+        <div class="day tooltip  download_availability_100">
+          <span class="tooltiptext">
+            <div>17/04/2026</div>
+            <div class="download_availability_100_text">
+              <strong>100%</strong>
+            </div>
+          </span>
+        </div>
+
+
+        <div class="day tooltip  download_availability_100">
+          <span class="tooltiptext">
+            <div>18/04/2026</div>
+            <div class="download_availability_100_text">
+              <strong>100%</strong>
+            </div>
+          </span>
+        </div>
+
+
+        <div class="day tooltip  download_availability_100">
+          <span class="tooltiptext">
+            <div>19/04/2026</div>
+            <div class="download_availability_100_text">
+              <strong>100%</strong>
+            </div>
+          </span>
+        </div>
+
+
+        <div class="day tooltip  download_availability_100">
+          <span class="tooltiptext">
+            <div>20/04/2026</div>
+            <div class="download_availability_100_text">
+              <strong>100%</strong>
+            </div>
+          </span>
+        </div>
+
+    </div>
+  </div>
+  <details class="pt-24">
+    <summary>En savoir plus</summary>
+    <div>Nous testons la disponibilité de cette ressource au téléchargement toutes les heures, en effectuant une requête HTTP de type <code class="inline">HEAD</code> dont le temps de réponse doit être inférieur à 5 secondes. Si nous détectons une indisponibilité, nous effectuons un nouveau test toutes les 10 minutes, jusqu'à ce que la ressource soit à nouveau disponible.<br><br>Pour les flux SIRI et SIRI Lite, nous effectuons une requête HTTP de type <code class="inline">GET</code> : nous considérons une réponse avec un code 401 ou 405 comme étant disponible. En cas d'erreur 500, nous considèrerons que le flux est indisponible, sauf si il semble contenir du SOAP.</div>
+  </details>
+</div>
+
+
+      
+
+
+
+
+<h2 id="validation-report">Rapport de validation</h2>
+
+  <div class="panel">
+  <p>
+    Cette ressource doit suivre le schéma <a href="https://schema.data.gouv.fr/etalab/schema-zfe/0.8.2/" target="_blank">etalab/schema-zfe</a>.
+  </p>
+
+
+    <p>
+  <b>
+
+      <span class="icon--validation">✅</span>Pas d&#39;erreur
+
+
+
+
+  </b>
+</p>
+
+
+</div>
+
+
+
+
+
+
+
+      <h2 class="mt-48" id="visualization">Visualisation</h2>
+      <div class="panel no-padding">
+        <div id="resource-geojson-info" class="p-24"></div>
+        <div id="resource-geojson"></div>
+        <script src="/js/mapgeojson-d0e57b489f6747fff4f8c0df40443fd6.js?vsn=d">
+        </script>
+        <script>
+          document.addEventListener("DOMContentLoaded", function() {
+            GenericGeojsonMap(
+              'resource-geojson',
+              'resource-geojson-info',
+              "https://transport-data-gouv-fr-resource-history-prod.cellar-c2.services.clever-cloud.com/79368/79368.20250414.181256.735773.geojson",
+              "29905",
+              "La visualisation est volumineuse",
+              "Afficher quand même"
+              )
+            })
+        </script>
+      </div>
+
+
+  </div>
+  <div class="dataset-metas"></div>
+</div>
+    </main>
+
+    <footer class="footer" id="footer">
+  <a href="#mail_form" class="mail__button" aria-label="Demander de l’aide">
+    <i class="fas icon--envelope"></i>
+    <span>Demander de l’aide</span>
+  </a>
+  <div class="modal__backdrop" id="mail_form">
+    <div class="footer__contact">
+      <a class="footer__contact--close" href="#" aria-label="Fermer le formulaire">
+        <i class="fas icon--times-circle"></i>
+      </a>
+<form action="/send_mail" method="post"><input name="_csrf_token" type="hidden" hidden value="ECAxdAcRK2cFMAc_Mj12UjcoLC4hUjUOSKcC_raPfJFyjYGapOYLmcmw">
+        <h3>Contact</h3>
+        <p>
+          Avez-vous lu notre <a href="https://doc.transport.data.gouv.fr" target="_blank">documentation en ligne</a> ? Votre réponse est probablement présente.
+        </p>
+<label for="email">
+          Adresse email<div class="form__group"><input id="email" name="email" required type="email"></div>
+</label>
+<label class="pt-12" for="user_type">
+          Je suis <div class="form__group"><select id="user_type" name="user_type" required><option disabled selected value="">Sélectionnez un choix</option><option value="data-producer">Producteur de données</option><option value="data-reuser">Réutilisateur de données</option><option value="other">Autre</option></select></div>
+</label>
+<label class="pt-12" for="question_type">
+          Ma question est à propos <div class="form__group"><select id="question_type" name="question_type" required><option disabled selected value="">Sélectionnez un choix</option><option value="website">Le site web transport.data.gouv.fr</option><option value="data-not-found">Des données que je ne trouve pas</option><option value="technical-support">Un besoin de support technique</option><option value="legal-requirements">Des informations réglementaires</option><option value="other">Autre</option></select></div>
+</label>
+        <div class="form__group"><input autocomplete="off" class="form-special-field" id="name" name="name" placeholder="your name" tabindex="-1" type="text"></div>
+<label class="pt-12" for="subject">
+          Sujet<div class="form__group"><input id="subject" name="subject" required type="text"></div>
+</label>
+<label class="pt-12" for="question">
+          Question<div class="form__group"><textarea id="question" name="question" required>
+</textarea></div>
+</label>
+        <div class="form__group"><button class="button" type="submit">Envoyer un email</button></div>
+</form>
+    </div>
+  </div>
+  <div class="container">
+    <div class="footer__logo">
+      <a class="ministere-link" href="https://www.ecologie.gouv.fr">Ministère des Transports</a>
+      <a href="/"><img alt="transport.data.gouv.fr" src="/images/logo-footer.svg"></a>
+    </div>
+    <ul class="footer__links">
+      <li>
+        <a class="footer__link footer__link--contact" href="#mail_form">
+          Nous contacter
+        </a>
+      </li>
+      <li>
+        <a class="footer__link" target="_blank" href="https://doc.transport.data.gouv.fr/outils/outils-disponibles-sur-le-pan/api">
+          API
+        </a>
+      </li>
+      <li>
+        <a class="footer__link" target="_blank" href="https://doc.transport.data.gouv.fr/le-point-d-acces-national/generalites/le-point-dacces-national">
+          FAQ
+        </a>
+      </li>
+      <li>
+        <a class="footer__link" target="_blank" href="https://github.com/etalab/transport-site/">
+          Code source
+        </a>
+      </li>
+      <li>
+        <a class="footer__link" href="/legal">
+          Mentions légales
+        </a>
+      </li>
+      <li>
+        <a class="footer__link" target="_blank" href="/budget">
+          Budget
+        </a>
+      </li>
+      <li>
+        <a class="footer__link" href="/accessibilite">
+          Accessibilité : non conforme
+        </a>
+      </li>
+    </ul>
+  </div>
+</footer>
+  </body>
+  <script defer type="text/javascript" src="/js/app-e4d5346b3c632f1b908ac98c05a1fc94.js?vsn=d"></script>
+</html>

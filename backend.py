@@ -46,11 +46,27 @@ def get_engine():
 # GRAPHE
 # =============================================================================
 
+def _build_kdtree(G):
+    """(Re)construit le KDTree pour snap_to_node. Appelé après chaque chargement.
+    Ne pas le mettre dans le pickle pour rester compatible entre versions sklearn."""
+    nodes = list(G.nodes(data=True))
+    coords = np.array([(d['lat'], d['lon']) for _, d in nodes])
+    coords_m = _latlon_to_meters_arr(coords)
+    G.graph['kdtree'] = KDTree(coords_m)
+    G.graph['node_ids'] = [n for n, _ in nodes]
+    return G
+
+
 def load_graph(use_cache=True):
-    """Charge le graphe networkx. Cache pickle pour rapidité."""
+    """Charge le graphe networkx. Cache pickle pour rapidité.
+    Le KDTree est reconstruit après chaque chargement (pas dans le pickle)."""
     if use_cache and GRAPH_CACHE.exists():
         with open(GRAPH_CACHE, 'rb') as f:
-            return pickle.load(f)
+            G = pickle.load(f)
+        # KDTree absent ou incompatible : on le reconstruit
+        if 'kdtree' not in G.graph or not _kdtree_works(G):
+            G = _build_kdtree(G)
+        return G
 
     engine = get_engine()
     with engine.connect() as conn:
@@ -93,16 +109,26 @@ def load_graph(use_cache=True):
     largest_cc = max(nx.weakly_connected_components(G), key=len)
     G = G.subgraph(largest_cc).copy()
 
-    # KDTree pour snap rapide
-    nodes = list(G.nodes(data=True))
-    coords = np.array([(d['lat'], d['lon']) for _, d in nodes])
-    coords_m = _latlon_to_meters_arr(coords)
-    G.graph['kdtree'] = KDTree(coords_m)
-    G.graph['node_ids'] = [n for n, _ in nodes]
-
+    # On sauvegarde le pickle SANS le KDTree (sera reconstruit au chargement)
     with open(GRAPH_CACHE, 'wb') as f:
         pickle.dump(G, f)
+
+    # Ajoute le KDTree pour utilisation immédiate
+    G = _build_kdtree(G)
     return G
+
+
+def _kdtree_works(G):
+    """Teste si le KDTree existant est utilisable (compatible sklearn version)."""
+    try:
+        kdt = G.graph.get('kdtree')
+        if kdt is None:
+            return False
+        # Test d'un query simple
+        kdt.query(np.array([[0, 0]]), k=1)
+        return True
+    except Exception:
+        return False
 
 
 def reset_graph_cache():
