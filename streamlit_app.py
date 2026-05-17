@@ -323,48 +323,76 @@ def detect_bumps(coords, elevations,
     if len(dists) < 10:
         return []
 
-    # Passe 1 : smooth léger pour petites bosses
+    # Passe 1 : smooth léger pour petites bosses (~300m)
     smooth_fine = _smooth(elevs, 2)
     bumps_fine, _, _ = _detect_bumps_one_pass(
         dists, smooth_fine, mass_kg, CdA, Crr,
         neg_grade_break=-2.0, drop_ratio=0.10
     )
 
-    # Passe 2 : smooth fort pour grands cols
+    # Passe 2 : smooth moyen pour cols avec petits replats (~3-5km)
     smooth_coarse = _smooth(elevs, 6)
     bumps_coarse, _, _ = _detect_bumps_one_pass(
         dists, smooth_coarse, mass_kg, CdA, Crr,
         neg_grade_break=-5.0, drop_ratio=0.10
     )
-    # Smooth très fort pour calcul des sections pointues sur longs cols
-    # (élimine le bruit baromètre)
-    smooth_sections = _smooth(elevs, 12)
 
-    # Fusion : pour chaque bosse de la passe 2 (longue), on supprime
-    # toutes les bosses de la passe 1 qui sont dedans, et on garde la longue
+    # Passe 3 : smooth très fort pour grands cols avec replats marqués (lacets)
+    smooth_macro = _smooth(elevs, 16)
+    bumps_macro, _, _ = _detect_bumps_one_pass(
+        dists, smooth_macro, mass_kg, CdA, Crr,
+        neg_grade_break=-8.0, drop_ratio=0.20
+    )
+
+    # Smooth très fort pour calcul des sections pointues sur longs cols
+    # Adaptatif : plus la bosse est longue, plus on lisse fort
+    smooth_sections_strong = _smooth(elevs, 20)  # très fort pour cols > 5km
+    smooth_sections = _smooth(elevs, 12)         # fort pour cols 1-5km
+
+    # === FUSION EN 3 NIVEAUX ===
+    # Priorité : macro > coarse > fine
+    # Une bosse macro absorbe toutes les coarse et fine dedans
+    # Une bosse coarse absorbe toutes les fine dedans (si >= 2 OU coarse 1.5x plus long)
+
     final_bumps = []
 
-    # On ne garde une bosse coarse que si elle est SIGNIFICATIVEMENT plus longue
-    # qu'une bosse fine au même endroit (sinon doublon)
-    for c in bumps_coarse:
-        # Cherche les bosses fines qui sont dans cette plage
-        fines_in_range = [f for f in bumps_fine
-                          if f['km_start'] >= c['km_start'] - 0.3
-                          and f['km_end'] <= c['km_end'] + 0.3]
+    # === FUSION PAR CHEVAUCHEMENT ===
+    # Stratégie simple : on collecte toutes les bosses des 3 passes, on les trie
+    # par longueur décroissante, et on garde une bosse seulement si elle ne
+    # chevauche pas trop avec une bosse déjà gardée (plus longue).
 
-        if len(fines_in_range) >= 2:
-            # Plusieurs petites bosses dans une grande → on garde la grande
-            final_bumps.append({'is_coarse': True, **c})
-            # Marque les fines pour suppression
-            for f in fines_in_range:
-                f['_skip'] = True
+    # Marque le niveau de chaque bosse pour distinguer macro/coarse/fine
+    all_candidates = []
+    for b in bumps_macro:
+        all_candidates.append({**b, '_level': 'macro', 'is_coarse': True})
+    for b in bumps_coarse:
+        all_candidates.append({**b, '_level': 'coarse', 'is_coarse': True})
+    for b in bumps_fine:
+        all_candidates.append({**b, '_level': 'fine', 'is_coarse': False})
 
-    # Ajoute toutes les bosses fines non skippées
-    for f in bumps_fine:
-        if not f.get('_skip'):
-            final_bumps.append({'is_coarse': False, **f})
+    # Trie par longueur DÉCROISSANTE : les longues bosses (macro) prioritaires
+    all_candidates.sort(key=lambda b: -b['length_m'])
 
-    # Trie par km_start
+    final_bumps = []
+    for cand in all_candidates:
+        # Vérifie si cand chevauche significativement avec une bosse déjà acceptée
+        overlap_too_much = False
+        for kept in final_bumps:
+            # Calcul du chevauchement
+            overlap_start = max(cand['km_start'], kept['km_start'])
+            overlap_end = min(cand['km_end'], kept['km_end'])
+            overlap_km = max(0, overlap_end - overlap_start)
+            cand_length_km = cand['length_m'] / 1000
+
+            # Si plus de 50% de la bosse candidate chevauche une bosse gardée, on rejette
+            if cand_length_km > 0 and overlap_km / cand_length_km > 0.5:
+                overlap_too_much = True
+                break
+
+        if not overlap_too_much:
+            final_bumps.append(cand)
+
+    # Re-trie par km_start pour l'affichage
     final_bumps.sort(key=lambda b: b['km_start'])
 
     # Construit le résultat final avec tous les champs
@@ -385,17 +413,27 @@ def detect_bumps(coords, elevations,
         gain = smooth_used[peak_i] - smooth_used[start_i]
         grade = gain / length * 100 if length > 0 else 0
 
-        # Pente max : sur smooth_sections pour les cols, smooth_fine pour petites bosses
-        smooth_for_max = smooth_sections if b['is_coarse'] else smooth_fine
+        # Pente max : smoothing adaptatif selon la longueur de la bosse
+        if not b['is_coarse']:
+            smooth_for_max = smooth_fine
+        elif (dists[b['peak_i']] - dists[b['start_i']]) > 5000:
+            # Col > 5km : smoothing très fort
+            smooth_for_max = smooth_sections_strong
+        else:
+            smooth_for_max = smooth_sections
         max_g = 0
         for k in range(start_i, peak_i - window_samples + 1):
             seg_g = (smooth_for_max[k + window_samples] - smooth_for_max[k]) / 100 * 100
             if seg_g > max_g:
                 max_g = seg_g
 
-        # Section pointue : sur smooth_sections pour les cols (sans bruit baromètre)
-        # sur smooth_fine pour les petites bosses (garde la précision)
-        smooth_for_pointu = smooth_sections if b['is_coarse'] else smooth_fine
+        # Section pointue : même logique adaptative
+        if not b['is_coarse']:
+            smooth_for_pointu = smooth_fine
+        elif (dists[b['peak_i']] - dists[b['start_i']]) > 5000:
+            smooth_for_pointu = smooth_sections_strong
+        else:
+            smooth_for_pointu = smooth_sections
         section_pointue = _find_pointu_section(smooth_for_pointu, dists, start_i, peak_i, grade)
 
         # Analyse 2,5km après sommet sur le bon smooth
@@ -446,10 +484,316 @@ def detect_bumps(coords, elevations,
             "fiets": round(fiets, 2),
             "fiets_cat": fiets_cat,
         })
-
+    # Fusion finale : élimine les bosses qui se chevauchent
+    result = _merge_overlapping_bumps(result)
     return result
 
+def _merge_overlapping_bumps(bumps, overlap_threshold=0.3):
+    """Fusionne les bosses qui se chevauchent.
+    Si deux bosses partagent plus de overlap_threshold (30%) de la plus courte,
+    on garde la plus longue.
+    """
+    if len(bumps) <= 1:
+        return bumps
 
+    # Trie par longueur décroissante : on traite les plus longues en premier
+    sorted_bumps = sorted(bumps, key=lambda b: -b['length_m'])
+
+    kept = []
+    for cand in sorted_bumps:
+        cand_start = cand['km_start']
+        cand_end = cand['km_start'] + cand['length_m'] / 1000
+        cand_length_km = cand['length_m'] / 1000
+
+        overlap_too_much = False
+        for k in kept:
+            k_start = k['km_start']
+            k_end = k['km_start'] + k['length_m'] / 1000
+
+            ov_start = max(cand_start, k_start)
+            ov_end = min(cand_end, k_end)
+            ov_km = max(0, ov_end - ov_start)
+
+            # Si plus de 30% de la plus courte chevauche, on rejette la candidate
+            shortest_length_km = min(cand_length_km, k['length_m'] / 1000)
+            if shortest_length_km > 0 and ov_km / shortest_length_km > overlap_threshold:
+                overlap_too_much = True
+                break
+
+        if not overlap_too_much:
+            kept.append(cand)
+
+    # Renumérote et retrie par position
+    kept.sort(key=lambda b: b['km_start'])
+    for i, b in enumerate(kept):
+        b['num'] = i + 1
+
+    return kept
+
+
+
+# ============================================================================
+# VISUALISATION DES PROFILS DE BOSSES
+# ============================================================================
+
+def _build_full_profile(coords, elevations):
+    """Construit le profil complet (distance cumulative, altitudes) pour affichage.
+    Retourne un dict avec dists_km, elevs, et list des indices des bosses détectées.
+    """
+    if len(coords) < 2 or len(elevations) != len(coords):
+        return None
+
+    cum = [0.0]
+    for i in range(1, len(coords)):
+        cum.append(cum[-1] + haversine_m(coords[i-1], coords[i]))
+
+    return {
+        "dists_km": [d / 1000 for d in cum],
+        "elevs": elevations,
+        "total_km": cum[-1] / 1000,
+    }
+
+
+def _make_overview_chart(profile, bumps):
+    """Profil global du parcours avec bosses surlignées en couleur.
+    Returns: plotly figure
+    """
+    import plotly.graph_objects as go
+
+    dists = profile["dists_km"]
+    elevs = profile["elevs"]
+
+    fig = go.Figure()
+
+    # Profil de base (gris clair)
+    fig.add_trace(go.Scatter(
+        x=dists, y=elevs,
+        mode="lines",
+        line=dict(color="#94a3b8", width=1.5),
+        fill="tozeroy",
+        fillcolor="rgba(148, 163, 184, 0.2)",
+        name="Parcours",
+        hovertemplate="km %{x:.1f}<br>alt %{y:.0f}m<extra></extra>",
+    ))
+
+    # Pour chaque bosse, surligne la zone en couleur selon pente
+    for b in bumps:
+        # Trouve les indices correspondants
+        km_start = b["km_start"]
+        km_end = km_start + b["length_m"] / 1000
+
+        # Sélectionne les points dans la plage
+        idx_start = next((i for i, d in enumerate(dists) if d >= km_start), 0)
+        idx_end = next((i for i, d in enumerate(dists) if d >= km_end), len(dists) - 1)
+
+        if idx_end <= idx_start:
+            continue
+
+        sub_dists = dists[idx_start:idx_end + 1]
+        sub_elevs = elevs[idx_start:idx_end + 1]
+
+        # Couleur selon pente moyenne
+        grade = b["grade_avg"]
+        if grade < 4:
+            color = "rgba(255, 193, 7, 0.6)"      # jaune
+            line_color = "#f59e0b"
+        elif grade < 6:
+            color = "rgba(255, 152, 0, 0.6)"      # orange
+            line_color = "#f97316"
+        elif grade < 9:
+            color = "rgba(244, 67, 54, 0.6)"      # rouge
+            line_color = "#ef4444"
+        else:
+            color = "rgba(136, 14, 79, 0.7)"      # violet sombre (HC)
+            line_color = "#9333ea"
+
+        fig.add_trace(go.Scatter(
+            x=sub_dists, y=sub_elevs,
+            mode="lines",
+            line=dict(color=line_color, width=2.5),
+            fill="tozeroy",
+            fillcolor=color,
+            name=f"Bosse #{b['num']}",
+            hovertemplate=(f"<b>Bosse #{b['num']}</b><br>"
+                           f"L={b['length_m']}m · {grade}%<br>"
+                           f"km %{{x:.1f}} · alt %{{y:.0f}}m<extra></extra>"),
+            showlegend=False,
+        ))
+
+        # Marker au sommet de la bosse avec numéro
+        peak_idx = max(range(idx_start, idx_end + 1), key=lambda i: elevs[i])
+        fig.add_annotation(
+            x=dists[peak_idx], y=elevs[peak_idx],
+            text=f"<b>{b['num']}</b>",
+            showarrow=True, arrowhead=2, arrowsize=1, arrowwidth=1.5,
+            arrowcolor=line_color,
+            ax=0, ay=-25,
+            bgcolor=line_color,
+            font=dict(color="white", size=11),
+            borderpad=3,
+        )
+
+    fig.update_layout(
+        title="Profil du parcours · bosses surlignées",
+        xaxis_title="Distance (km)",
+        yaxis_title="Altitude (m)",
+        hovermode="x unified",
+        height=350,
+        margin=dict(l=50, r=20, t=50, b=50),
+        showlegend=False,
+        plot_bgcolor="white",
+    )
+    fig.update_xaxes(gridcolor="#e5e7eb", showgrid=True)
+    fig.update_yaxes(gridcolor="#e5e7eb", showgrid=True)
+
+    return fig
+
+
+def _make_bump_detail_chart(profile, bump):
+    """Profil détaillé d'une seule bosse avec coloration par section de pente.
+    Applique un smoothing 500m à l'altitude pour éliminer le bruit GPS/baromètre.
+    """
+    import plotly.graph_objects as go
+
+    dists = profile["dists_km"]
+    elevs_raw = profile["elevs"]
+
+    # Smoothing sur 500m pour gommer le bruit GPS (standard industrie)
+    # Le step réel dépend de la densité du GPX, on calcule la fenêtre adaptative
+    if len(dists) >= 2:
+        avg_step_m = (dists[-1] - dists[0]) * 1000 / max(len(dists) - 1, 1)
+        window_500m = max(3, int(500 / avg_step_m))
+    else:
+        window_500m = 3
+
+    # Smoothing par moyenne mobile centrée
+    elevs = []
+    half = window_500m // 2
+    n = len(elevs_raw)
+    for i in range(n):
+        lo = max(0, i - half)
+        hi = min(n, i + half + 1)
+        elevs.append(sum(elevs_raw[lo:hi]) / (hi - lo))
+
+    km_start = bump["km_start"]
+    km_end = km_start + bump["length_m"] / 1000
+
+    # Ajoute 200m de contexte avant et après
+    km_view_start = max(0, km_start - 0.2)
+    km_view_end = min(profile["total_km"], km_end + 0.2)
+
+    idx_start = next((i for i, d in enumerate(dists) if d >= km_view_start), 0)
+    idx_end = next((i for i, d in enumerate(dists) if d >= km_view_end), len(dists) - 1)
+
+    sub_dists = dists[idx_start:idx_end + 1]
+    sub_elevs = elevs[idx_start:idx_end + 1]
+
+    # Calcule pente par segment de ~50m pour colorier
+    fig = go.Figure()
+
+    # Trace principal (en gris)
+    fig.add_trace(go.Scatter(
+        x=sub_dists, y=sub_elevs,
+        mode="lines",
+        line=dict(color="#cbd5e1", width=1),
+        name="Profil",
+        hoverinfo="skip",
+        showlegend=False,
+    ))
+
+    # Coloration par section selon pente locale (fenêtre 250m glissante)
+    # 250m = équilibre entre stabilité et précision sur petites bosses
+    if len(sub_dists) >= 2:
+        avg_step_m = (sub_dists[-1] - sub_dists[0]) * 1000 / max(len(sub_dists) - 1, 1)
+        step_window = max(2, int(250 / avg_step_m))
+    else:
+        step_window = 4
+
+    if len(sub_dists) > step_window:
+        for i in range(len(sub_dists) - step_window):
+            d1 = sub_dists[i] * 1000
+            d2 = sub_dists[i + step_window] * 1000
+            if d2 - d1 < 100:
+                continue
+            grade_local = (sub_elevs[i + step_window] - sub_elevs[i]) / (d2 - d1) * 100
+
+            # Couleur selon pente
+            if grade_local < 0:
+                color = "#10b981"  # vert (descente)
+            elif grade_local < 3:
+                color = "#fbbf24"  # jaune
+            elif grade_local < 6:
+                color = "#fb923c"  # orange
+            elif grade_local < 9:
+                color = "#ef4444"  # rouge
+            else:
+                color = "#9333ea"  # violet
+
+            fig.add_trace(go.Scatter(
+                x=sub_dists[i:i + step_window + 1],
+                y=sub_elevs[i:i + step_window + 1],
+
+                mode="lines",
+                line=dict(color=color, width=4),
+                hovertemplate=(f"km %{{x:.2f}}<br>alt %{{y:.0f}}m<br>"
+                               f"pente locale {grade_local:.1f}%<extra></extra>"),
+                showlegend=False,
+            ))
+
+    # Ligne verticale début/fin de la bosse
+    fig.add_vline(x=km_start, line=dict(color="#64748b", dash="dash", width=1),
+                  annotation_text="Début", annotation_position="top left")
+    fig.add_vline(x=km_end, line=dict(color="#64748b", dash="dash", width=1),
+                  annotation_text="Sommet", annotation_position="top right")
+
+    # Titre avec infos
+    title_text = (f"Bosse #{bump['num']} · {bump['length_m']}m à {bump['grade_avg']}% "
+                  f"(max {bump['grade_max_100m']}% sur 100m)")
+
+    fig.update_layout(
+        title=title_text,
+        xaxis_title="Distance (km)",
+        yaxis_title="Altitude (m)",
+        hovermode="closest",
+        height=280,
+        margin=dict(l=50, r=20, t=50, b=50),
+        showlegend=False,
+        plot_bgcolor="white",
+    )
+    fig.update_xaxes(gridcolor="#e5e7eb", showgrid=True)
+    fig.update_yaxes(gridcolor="#e5e7eb", showgrid=True)
+
+    return fig
+
+
+def render_bumps_visualization(profile, bumps, key_suffix=""):
+    """Affiche la visualisation complète des bosses :
+    1. Profil global avec bosses surlignées
+    2. Détails par bosse dans des expanders
+    """
+    if not bumps or not profile:
+        return
+
+    # Légende colorée
+    st.markdown("""
+    <div style='display: flex; gap: 15px; flex-wrap: wrap; font-size: 13px; margin-bottom: 10px;'>
+        <span><span style='display:inline-block;width:12px;height:12px;background:#fbbf24;border-radius:2px;'></span> < 4%</span>
+        <span><span style='display:inline-block;width:12px;height:12px;background:#fb923c;border-radius:2px;'></span> 4-6%</span>
+        <span><span style='display:inline-block;width:12px;height:12px;background:#ef4444;border-radius:2px;'></span> 6-9%</span>
+        <span><span style='display:inline-block;width:12px;height:12px;background:#9333ea;border-radius:2px;'></span> > 9%</span>
+    </div>
+    """, unsafe_allow_html=True)
+
+    # 1. Profil global
+    fig_overview = _make_overview_chart(profile, bumps)
+    st.plotly_chart(fig_overview, use_container_width=True, key=f"overview_{key_suffix}")
+
+    # 2. Détails par bosse
+    with st.expander(f"Voir les profils détaillés {len(bumps)} bosses"):
+        for b in bumps:
+            fig_detail = _make_bump_detail_chart(profile, b)
+            st.plotly_chart(fig_detail, use_container_width=True,
+                            key=f"detail_{key_suffix}_{b['num']}")
 # ============================================================================
 # ALTITUDES
 # ============================================================================
@@ -960,11 +1304,16 @@ def _style_bump_row(row):
     return styles
 
 
-def _show_bumps_table(bumps, name, fname):
-    """Affiche tableau bosses + bouton Excel."""
+def _show_bumps_table(bumps, name, fname, profile=None):
+    """Affiche profil interactif + tableau bosses + bouton Excel."""
     if not bumps:
         st.info("Aucune bosse détectée (seuils : >250m et >3%)")
         return
+
+    # Visualisation interactive en premier (si profil disponible)
+    if profile:
+        render_bumps_visualization(profile, bumps, key_suffix=fname)
+        st.divider()
 
     df = pd.DataFrame([{
         "N°": b["num"],
@@ -1026,18 +1375,33 @@ def render_bumps_section():
 
     to_show = []
     if bumps_route:
-        to_show.append(("Itinéraire calculé", bumps_route, "itineraire"))
+        # Construit le profil de l'itinéraire calculé
+        r = st.session_state.route_result
+        if r:
+            elevs = get_route_elevations(r)
+            profile = _build_full_profile(r["coords"], elevs) if elevs else None
+        else:
+            profile = None
+        to_show.append(("Itinéraire calculé", bumps_route, "itineraire", profile))
+
     if bumps_uploaded:
-        to_show.append(("GPX uploadé", bumps_uploaded, "gpx_upload"))
+        # Construit le profil du GPX uploadé
+        coords = st.session_state.uploaded_trace
+        elevs = st.session_state.uploaded_elevs
+        if coords and elevs:
+            profile = _build_full_profile(coords, elevs)
+        else:
+            profile = None
+        to_show.append(("GPX uploadé", bumps_uploaded, "gpx_upload", profile))
 
     if len(to_show) == 1:
-        name, bumps, fname = to_show[0]
-        _show_bumps_table(bumps, name, fname)
+        name, bumps, fname, profile = to_show[0]
+        _show_bumps_table(bumps, name, fname, profile)
     else:
         tabs = st.tabs([t[0] for t in to_show])
-        for tab, (name, bumps, fname) in zip(tabs, to_show):
+        for tab, (name, bumps, fname, profile) in zip(tabs, to_show):
             with tab:
-                _show_bumps_table(bumps, name, fname)
+                _show_bumps_table(bumps, name, fname, profile)
 
 
 
